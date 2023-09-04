@@ -3,19 +3,28 @@
 - hosts: all
   become: true
   pre_tasks:
-  - name: Install updates (CentOS)
+  - name: Update Repo Cache (CentOS)
     tags: always
     yum:
       update_only: yes
-      update_cache: yes
+    changed_when: false
     when: ansible_distribution == "CentOS"
   
-  - name: Install updates (Ubuntu)
+  - name: Update Repo Cache (Ubuntu)
     tags: always
     apt:
       upgrade: dist
-      update_cache: yes
+    changed_when: false
     when: ansible_distribution == "Ubuntu"
+
+- hosts: all
+  become: true
+  tasks:  
+  - name: add ssh key for simone
+    tags: always
+    authorized_key:
+      user: simone
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIXuol2Iwd88KvjDMgA2CRIZQ4Dav2CV/1juxII9bhfF ansible"
 
 - hosts: workstations
   become: true
