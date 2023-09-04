@@ -1,0 +1,123 @@
+---
+
+- hosts: all
+  become: true
+  pre_tasks:
+  - name: Update Repo Cache (CentOS)
+    tags: always
+    yum:
+      update_only: yes
+    changed_when: false
+    when: ansible_distribution == "CentOS"
+  
+  - name: Update Repo Cache (Ubuntu)
+    tags: always
+    apt:
+      upgrade: dist
+    changed_when: false
+    when: ansible_distribution == "Ubuntu"
+
+- hosts: all
+  become: true
+  tasks:  
+  - name: add ssh key for simone
+    tags: always
+    authorized_key:
+      user: simone
+      key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIXuol2Iwd88KvjDMgA2CRIZQ4Dav2CV/1juxII9bhfF ansible"
+
+- hosts: workstations
+  become: true
+  tasks:
+    - name: install unzip
+      package:
+        name: unzip
+    
+    - name: install terraform
+      unarchive:
+        src: https://releases.hashicorp.com/terraform/1.5.6/terraform_1.5.6_linux_386.zip
+        dest: /usr/local/bin
+        remote_src: yes
+        mode: 0755
+        owner: root
+        group: root      
+
+- hosts: web_servers
+  become: true
+  tasks:
+  - name: install apache2 and add php support
+    tags: apache, apache2, ubuntu
+    apt:
+      name:
+        - apache2
+        - libapache2-mod-php
+      state: latest
+    when: ansible_distribution in ["Ubuntu"]
+  
+  - name: install httpd and php package
+    tags: apache, httpd, centos
+    yum:
+      name:
+        - httpd
+        - php
+      state: latest
+    when: ansible_distribution in ["CentOS"]
+   
+  - name: start httpd (CentOS)
+    tags: apache, centos, httpd
+    service: 
+      name: httpd
+      state: started
+      enabled: yes
+    when: ansible_distribution == "CentOS"  
+  
+  - name: change email address for admin
+    tags: apache, centos, httpd
+    lineinfile:
+      path: /etc/httpd/conf/httpd.conf
+      regexp: '^ServerAdmin'
+      line: ServerAdmin anuj@anuj.com
+    when: ansible_distribution == "CentOS"
+    register: httpd
+  
+  - name: restart httpd
+    tags: apache, centos, httpd
+    service:
+      name: httpd
+      state: restarted
+    when: httpd.changed
+   
+  - name: copy default html file for site
+    tags: apacehe,apache2,html
+    copy:
+      src: default_site.html
+      dest: /var/www/html/index.html
+      owner: root
+      group: root
+      mode: 0644 
+
+- hosts: db_servers
+  become: true
+  tasks:
+  - name: install mariadb package (CentOS)
+    tags: centos, db, mariadb
+    yum: 
+      name: mariadb
+      state: latest
+    when: ansible_distribution == "CentOS"
+  
+  - name: install mariadb package (Ubuntu)
+    tags: ubuntu, db, mariadb
+    apt: 
+      name: mariadb-server
+      state: latest
+    when: ansible_distribution == "Ubuntu"
+
+- hosts: file_servers
+  become: true
+  tasks:
+  - name: install samba package
+    tags: samba
+    package:
+      name: samba
+      state: latest
