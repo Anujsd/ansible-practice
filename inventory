@@ -7,3 +7,6 @@
 
 [file_servers]
 10.160.0.8
+
+[workstations]
+10.160.0.7 ansible_connection=local
